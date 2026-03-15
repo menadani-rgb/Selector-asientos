@@ -1,0 +1,144 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<style>
+*{box-sizing:border-box;margin:0;padding:0;}
+body{font-family:Arial,sans-serif;background:#f5f5f5;padding:10px;}
+.wrap{max-width:420px;margin:0 auto;padding:1rem 0.5rem;}
+.legend{display:flex;gap:16px;justify-content:center;flex-wrap:wrap;margin-bottom:1.25rem;}
+.leg-item{display:flex;align-items:center;gap:6px;font-size:13px;color:#666;}
+.dot{width:14px;height:14px;border-radius:4px;flex-shrink:0;}
+.piso{border:1px solid #ddd;border-radius:12px;padding:1rem;margin-bottom:1rem;background:#fff;}
+.piso-label{text-align:center;font-size:13px;font-weight:bold;color:#888;letter-spacing:1px;margin-bottom:14px;text-transform:uppercase;}
+.fila{display:flex;gap:8px;justify-content:center;margin-bottom:8px;}
+.seat{width:60px;height:44px;border-radius:8px;display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:bold;cursor:pointer;border:1.5px solid;transition:transform 0.1s;}
+.seat.libre{border-color:#3B6D11;color:#3B6D11;background:transparent;}
+.seat.libre:hover{background:#EAF3DE;transform:scale(1.05);}
+.seat.seleccionado{border-color:#993C1D;background:#D85A30;color:white;}
+.seat.ocupado{border-color:#A32D2D;background:#E24B4A;color:white;cursor:not-allowed;}
+.seat.vacio{visibility:hidden;}
+.pasillo{width:20px;flex-shrink:0;}
+.panel{border:1px solid #ddd;border-radius:12px;padding:1rem;background:#fff;}
+.panel-row{display:flex;justify-content:space-between;align-items:center;font-size:14px;margin-bottom:10px;}
+.panel-row span:first-child{color:#888;}
+#selDisplay{color:#D85A30;font-weight:bold;}
+.btn{display:block;width:100%;padding:11px;border-radius:40px;border:none;background:#D85A30;color:white;font-size:15px;font-weight:bold;cursor:pointer;margin-top:12px;}
+.btn:hover{opacity:0.88;}
+.btn:disabled{background:#ccc;color:#999;cursor:not-allowed;}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <!-- Leyenda -->
+  <div class="legend">
+    <div class="leg-item"><div class="dot" style="border:1.5px solid #3B6D11;"></div>Disponible</div>
+    <div class="leg-item"><div class="dot" style="background:#D85A30;border:1.5px solid #993C1D;"></div>Seleccionado</div>
+    <div class="leg-item"><div class="dot" style="background:#E24B4A;border:1.5px solid #A32D2D;"></div>Ocupado</div>
+  </div>
+
+  <!-- PISO SUPERIOR -->
+  <div class="piso">
+    <div class="piso-label">Piso superior — 20 asientos</div>
+    <div class="fila">
+      <div class="seat libre" onclick="sel(this,'01')">01</div>
+      <div class="seat libre" onclick="sel(this,'02')">02</div>
+      <div class="pasillo"></div>
+      <div class="seat libre" onclick="sel(this,'03')">03</div>
+    </div>
+    <div class="fila">
+      <div class="seat libre" onclick="sel(this,'04')">04</div>
+      <div class="seat libre" onclick="sel(this,'05')">05</div>
+      <div class="pasillo"></div>
+      <div class="seat libre" onclick="sel(this,'06')">06</div>
+    </div>
+    <div class="fila">
+      <div class="seat libre" onclick="sel(this,'07')">07</div>
+      <div class="seat libre" onclick="sel(this,'08')">08</div>
+      <div class="pasillo"></div>
+      <div class="seat libre" onclick="sel(this,'09')">09</div>
+    </div>
+    <div class="fila">
+      <div class="seat libre" onclick="sel(this,'10')">10</div>
+      <div class="seat libre" onclick="sel(this,'11')">11</div>
+      <div class="pasillo"></div>
+      <div class="seat ocupado">12</div>
+    </div>
+    <div class="fila">
+      <div class="seat libre" onclick="sel(this,'13')">13</div>
+      <div class="seat libre" onclick="sel(this,'14')">14</div>
+      <div class="pasillo"></div>
+      <div class="seat libre" onclick="sel(this,'15')">15</div>
+    </div>
+    <div class="fila">
+      <div class="seat libre" onclick="sel(this,'16')">16</div>
+      <div class="seat libre" onclick="sel(this,'17')">17</div>
+      <div class="pasillo"></div>
+      <div class="seat libre" onclick="sel(this,'18')">18</div>
+    </div>
+    <div class="fila">
+      <div class="seat libre" onclick="sel(this,'19')">19</div>
+      <div class="seat libre" onclick="sel(this,'20')">20</div>
+      <div class="pasillo"></div>
+      <div class="seat vacio"></div>
+    </div>
+  </div>
+
+  <!-- PRIMER PISO -->
+  <div class="piso">
+    <div class="piso-label">Primer piso — 6 asientos</div>
+    <div class="fila">
+      <div class="seat libre" onclick="sel(this,'21')">21</div>
+      <div class="seat libre" onclick="sel(this,'22')">22</div>
+      <div class="pasillo"></div>
+      <div class="seat libre" onclick="sel(this,'23')">23</div>
+    </div>
+    <div class="fila">
+      <div class="seat libre" onclick="sel(this,'24')">24</div>
+      <div class="seat libre" onclick="sel(this,'25')">25</div>
+      <div class="pasillo"></div>
+      <div class="seat ocupado">26</div>
+    </div>
+  </div>
+
+  <!-- PANEL CONFIRMACIÓN -->
+  <div class="panel">
+    <div class="panel-row"><span>Viaje</span><span>São Paulo → Rio de Janeiro</span></div>
+    <div class="panel-row"><span>Asiento seleccionado</span><span id="selDisplay">—</span></div>
+    <button class="btn" id="btnConfirmar" disabled onclick="confirmar()">Confirmar asiento</button>
+  </div>
+
+</div>
+
+<script>
+let actual = null;
+function sel(el, id){
+  if(el.classList.contains('ocupado')) return;
+  if(actual){
+    actual.classList.remove('seleccionado');
+    actual.classList.add('libre');
+  }
+  if(actual === el){
+    actual = null;
+    document.getElementById('selDisplay').textContent = '—';
+    document.getElementById('btnConfirmar').disabled = true;
+    return;
+  }
+  el.classList.remove('libre');
+  el.classList.add('seleccionado');
+  actual = el;
+  document.getElementById('selDisplay').textContent = 'Asiento ' + id;
+  document.getElementById('btnConfirmar').disabled = false;
+}
+function confirmar(){
+  if(!actual) return;
+  var id = actual.textContent.trim();
+  // En Glide reemplaza esta línea con tu deeplink:
+  // window.location = 'glide://action?asiento=' + id;
+  alert('Asiento ' + id + ' confirmado.');
+}
+</script>
+</body>
+</html>

@@ -11,12 +11,15 @@ body{font-family:Arial,sans-serif;background:#f0f0f0;padding:10px;}
 .counter-pill{padding:4px 14px;border-radius:40px;font-size:12px;font-weight:bold;border:1.5px solid;}
 .pill-libre{border-color:#444;color:#444;background:#fff;}
 .pill-sel{border-color:#1a5a08;color:#1a5a08;background:#e6f5e0;}
-.pill-ocupado{border-color:#8a1509;color:#8a1509;background:#fde8e6;}
+.pill-vendido{border-color:#8a1509;color:#8a1509;background:#fde8e6;}
 .legend{display:flex;gap:14px;justify-content:center;flex-wrap:wrap;margin-bottom:12px;}
 .leg-item{display:flex;align-items:center;gap:5px;font-size:11px;color:#666;}
 .leg-dot{width:12px;height:12px;border-radius:3px;flex-shrink:0;}
 .piso{border:1px solid #ddd;border-radius:14px;padding:14px 8px 10px;margin-bottom:10px;background:#fff;}
 .piso-label{text-align:center;font-size:11px;font-weight:bold;color:#aaa;letter-spacing:1px;text-transform:uppercase;margin-bottom:12px;}
+.info-bar{background:#fff;border:1px solid #ddd;border-radius:14px;padding:10px 14px;margin-bottom:10px;display:flex;justify-content:space-between;font-size:13px;}
+.info-bar span:first-child{color:#999;}
+.info-bar span:last-child{font-weight:bold;color:#333;}
 .panel{border:1px solid #ddd;border-radius:14px;padding:1rem;background:#fff;margin-top:8px;}
 .panel-row{display:flex;justify-content:space-between;font-size:13px;margin-bottom:7px;align-items:center;}
 .panel-row span:first-child{color:#999;}
@@ -43,7 +46,7 @@ body{font-family:Arial,sans-serif;background:#f0f0f0;padding:10px;}
 .modal-btns{display:flex;gap:8px;margin-top:14px;}
 .btn-cancelar{flex:1;padding:9px;border-radius:40px;border:1.5px solid #ddd;background:transparent;color:#666;font-size:13px;cursor:pointer;}
 .btn-confirmar{flex:2;padding:9px;border-radius:40px;border:none;background:#2E950F;color:white;font-size:13px;font-weight:bold;cursor:pointer;}
-.toast{position:fixed;bottom:24px;left:50%;transform:translateX(-50%) translateY(60px);background:#333;color:white;padding:10px 22px;border-radius:40px;font-size:13px;opacity:0;transition:all 0.3s;z-index:200;pointer-events:none;}
+.toast{position:fixed;bottom:24px;left:50%;transform:translateX(-50%) translateY(60px);background:#2E950F;color:white;padding:10px 22px;border-radius:40px;font-size:13px;opacity:0;transition:all 0.3s;z-index:200;pointer-events:none;text-align:center;max-width:300px;}
 .toast.show{opacity:1;transform:translateX(-50%) translateY(0);}
 </style>
 </head>
@@ -51,9 +54,9 @@ body{font-family:Arial,sans-serif;background:#f0f0f0;padding:10px;}
 
 <div class="wrap">
   <div class="counter-bar">
-    <div class="counter-pill pill-libre">Disponibles: <span id="cntLibre">24</span></div>
+    <div class="counter-pill pill-libre">Disponibles: <span id="cntLibre">0</span></div>
     <div class="counter-pill pill-sel">Seleccionados: <span id="cntSel">0</span></div>
-    <div class="counter-pill pill-ocupado">Vendidos: <span id="cntOcupado">2</span></div>
+    <div class="counter-pill pill-vendido">Vendidos: <span id="cntVendido">0</span></div>
   </div>
   <div class="legend">
     <div class="leg-item"><div class="leg-dot" style="background:white;border:1.5px solid #222;"></div>Disponible</div>
@@ -61,29 +64,30 @@ body{font-family:Arial,sans-serif;background:#f0f0f0;padding:10px;}
     <div class="leg-item"><div class="leg-dot" style="background:#C72314;border:1.5px solid #8a1509;"></div>Vendido</div>
   </div>
 
-  <!-- PISO SUPERIOR -->
+  <div class="info-bar">
+    <span>Viaje</span>
+    <span id="infoViaje">—</span>
+  </div>
+
   <div class="piso">
     <div class="piso-label">Piso superior — 20 asientos</div>
     <div id="piso-sup"></div>
   </div>
 
-  <!-- PRIMER PISO -->
   <div class="piso">
     <div class="piso-label">Primer piso — 6 asientos</div>
     <div id="piso-inf"></div>
   </div>
 
-  <!-- PANEL -->
   <div class="panel">
-    <div class="panel-row"><span>Viaje</span><span>São Paulo → Rio de Janeiro</span></div>
-    <div class="panel-row"><span>Precio unitario</span><span>R$ 85,00</span></div>
+    <div class="panel-row"><span>Precio unitario</span><span id="precioDisplay">—</span></div>
     <div class="panel-row"><span>Asientos</span><span id="selDisplay">—</span></div>
     <div class="panel-row"><span>Cantidad</span><span id="cntSelPanel">0</span></div>
     <div class="total-row">
       <span class="total-label">Total</span>
       <span class="total-valor" id="totalDisplay">R$ 0,00</span>
     </div>
-    <button class="btn-main" id="btnVer" disabled onclick="abrirModal()">Ver resumen y confirmar</button>
+    <button class="btn-main" id="btnVer" disabled onclick="abrirModal()">Ver resumen</button>
   </div>
 </div>
 
@@ -91,17 +95,17 @@ body{font-family:Arial,sans-serif;background:#f0f0f0;padding:10px;}
 <div class="overlay" id="overlay">
   <div class="modal">
     <h3>Resumen de tu compra</h3>
-    <div class="modal-row"><span>Viaje</span><span>SP → Rio de Janeiro</span></div>
+    <div class="modal-row"><span>Viaje</span><span id="mViaje">—</span></div>
     <div class="modal-row"><span>Asientos</span><span class="modal-asientos" id="mAsientos">—</span></div>
     <div class="modal-row"><span>Cantidad</span><span id="mCantidad">—</span></div>
-    <div class="modal-row"><span>Precio unitario</span><span>R$ 85,00</span></div>
+    <div class="modal-row"><span>Precio unitario</span><span id="mPrecio">—</span></div>
     <div class="modal-total-row">
       <span class="modal-total-label">Total</span>
       <span class="modal-total-val" id="mTotal">R$ 0,00</span>
     </div>
     <div class="modal-btns">
       <button class="btn-cancelar" onclick="cerrarModal()">Cancelar</button>
-      <button class="btn-confirmar" onclick="confirmar()">Confirmar</button>
+      <button class="btn-confirmar" onclick="confirmar()">Guardar selección</button>
     </div>
   </div>
 </div>
@@ -110,8 +114,26 @@ body{font-family:Arial,sans-serif;background:#f0f0f0;padding:10px;}
 
 <script>
 var seleccionados = {};
+var VENDIDOS = [];
 var PRECIO = 85;
-var VENDIDOS = ['12', '26'];
+var VIAJE_ID = '';
+var ORIGEN = '';
+var DESTINO = '';
+
+// ============================================
+// LEE LOS PARÁMETROS QUE GLIDE PASA POR URL
+// ============================================
+function leerParams() {
+  var params = new URLSearchParams(window.location.search);
+  var vendidosStr = params.get('vendidos') || '';
+  VENDIDOS = vendidosStr ? vendidosStr.split(',').map(function(s){ return s.trim(); }) : [];
+  PRECIO = parseFloat(params.get('precio')) || 85;
+  VIAJE_ID = params.get('viaje') || '';
+  ORIGEN = params.get('origen') || 'Origen';
+  DESTINO = params.get('destino') || 'Destino';
+  document.getElementById('infoViaje').textContent = ORIGEN + ' → ' + DESTINO;
+  document.getElementById('precioDisplay').textContent = formatReal(PRECIO);
+}
 
 function seatSVG(id, estado) {
   var r1, r2, rb, ru, rt;
@@ -191,8 +213,9 @@ function actualizarPanel() {
   document.getElementById('cntSelPanel').textContent = cant;
   document.getElementById('totalDisplay').textContent = formatReal(cant * PRECIO);
   document.getElementById('btnVer').disabled = cant === 0;
-  document.getElementById('cntLibre').textContent = 26 - 2 - cant;
+  document.getElementById('cntLibre').textContent = 26 - VENDIDOS.length - cant;
   document.getElementById('cntSel').textContent = cant;
+  document.getElementById('cntVendido').textContent = VENDIDOS.length;
 }
 
 function sel(id) {
@@ -206,27 +229,62 @@ function formatReal(val) { return 'R$ ' + val.toFixed(2).replace('.', ','); }
 function abrirModal() {
   var ids = Object.keys(seleccionados).sort();
   var cant = ids.length;
+  document.getElementById('mViaje').textContent = ORIGEN + ' → ' + DESTINO;
   document.getElementById('mAsientos').textContent = ids.join(', ');
   document.getElementById('mCantidad').textContent = cant + (cant === 1 ? ' asiento' : ' asientos');
+  document.getElementById('mPrecio').textContent = formatReal(PRECIO);
   document.getElementById('mTotal').textContent = formatReal(cant * PRECIO);
   document.getElementById('overlay').classList.add('active');
 }
-function cerrarModal() { document.getElementById('overlay').classList.remove('active'); }
+
+function cerrarModal() {
+  document.getElementById('overlay').classList.remove('active');
+}
+
+// ============================================
+// ENVÍA LOS VALORES A GLIDE AL CONFIRMAR
+// Glide los captura y los guarda en las
+// columnas User Specific del viaje actual
+// ============================================
 function confirmar() {
   cerrarModal();
   var ids = Object.keys(seleccionados).sort();
-  // ---- INTEGRACIÓN GLIDE ----
-  // window.location = 'glide://action?asientos=' + ids.join(',');
-  // window.parent.postMessage({ asientos: ids }, '*');
-  showToast(ids.length + ' asiento(s) confirmado(s): ' + ids.join(', '));
+  var cant = ids.length;
+  var total = cant * PRECIO;
+
+  // Intento 1: postMessage estándar de Glide
+  window.parent.postMessage({
+    action: "set-values",
+    values: {
+      "US_Asientos": ids.join(','),
+      "US_Cantidad": cant,
+      "US_Total": total
+    }
+  }, "*");
+
+  // Intento 2: formato alternativo que algunas versiones de Glide escuchan
+  window.parent.postMessage({
+    type: "glide",
+    action: "set-column-values",
+    columnValues: {
+      "US_Asientos": ids.join(','),
+      "US_Cantidad": cant,
+      "US_Total": total
+    }
+  }, "*");
+
+  showToast('Asientos ' + ids.join(', ') + ' listos. Tocá "Confirmar Reserva" abajo.');
 }
+
 function showToast(msg) {
   var t = document.getElementById('toast');
   t.textContent = msg;
   t.classList.add('show');
-  setTimeout(function() { t.classList.remove('show'); }, 3500);
+  setTimeout(function() { t.classList.remove('show'); }, 5000);
 }
 
+// Inicializar
+leerParams();
 render();
 actualizarPanel();
 </script>

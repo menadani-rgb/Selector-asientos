@@ -31,7 +31,6 @@ body{font-family:Arial,sans-serif;background:#f0f0f0;padding:10px;}
 .btn-main{display:block;width:100%;padding:11px;border-radius:40px;border:none;background:#2E950F;color:white;font-size:14px;font-weight:bold;cursor:pointer;margin-top:10px;transition:opacity 0.15s;}
 .btn-main:hover{opacity:0.88;}
 .btn-main:disabled{background:#ddd;color:#aaa;cursor:not-allowed;}
-.btn-main.enviando{background:#888;cursor:not-allowed;}
 .overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,0.45);z-index:100;align-items:center;justify-content:center;}
 .overlay.active{display:flex;}
 .modal{background:#fff;border-radius:16px;padding:1.5rem;width:88%;max-width:320px;animation:popIn 0.2s ease;}
@@ -52,6 +51,7 @@ body{font-family:Arial,sans-serif;background:#f0f0f0;padding:10px;}
 .toast.show{opacity:1;transform:translateX(-50%) translateY(0);}
 .toast.exito{background:#2E950F;}
 .toast.error{background:#C72314;}
+.countdown{display:inline-block;margin-left:6px;font-size:11px;opacity:0.8;}
 </style>
 </head>
 <body>
@@ -89,7 +89,7 @@ body{font-family:Arial,sans-serif;background:#f0f0f0;padding:10px;}
     <div class="panel-row"><span>Cantidad</span><span id="cntSelPanel">0</span></div>
     <div class="total-row">
       <span class="total-label">Total</span>
-      <span class="total-valor" id="totalDisplay">R$ 0,00</span>
+      <span class="total-valor" id="totalDisplay">Bs. 0,00</span>
     </div>
     <button class="btn-main" id="btnVer" disabled onclick="abrirModal()">Ver resumen</button>
   </div>
@@ -105,7 +105,7 @@ body{font-family:Arial,sans-serif;background:#f0f0f0;padding:10px;}
     <div class="modal-row"><span>Precio unitario</span><span id="mPrecio">—</span></div>
     <div class="modal-total-row">
       <span class="modal-total-label">Total</span>
-      <span class="modal-total-val" id="mTotal">R$ 0,00</span>
+      <span class="modal-total-val" id="mTotal">Bs. 0,00</span>
     </div>
     <div class="modal-btns">
       <button class="btn-cancelar" onclick="cerrarModal()">Cancelar</button>
@@ -123,10 +123,8 @@ var PRECIO = 85;
 var VIAJE_ID = '';
 var ORIGEN = '';
 var DESTINO = '';
+var MONEDA = 'Bs.';
 
-// ============================================
-// URL DEL WEBHOOK DE MAKE
-// ============================================
 var WEBHOOK_URL = 'https://hook.us1.make.com/2tgnjr0cfzxppku2nr2e1fri7kqexs1j';
 
 function leerParams() {
@@ -137,8 +135,9 @@ function leerParams() {
   VIAJE_ID = params.get('viaje') || '';
   ORIGEN = params.get('origen') || 'Origen';
   DESTINO = params.get('destino') || 'Destino';
+  MONEDA = params.get('moneda') || 'Bs.';
   document.getElementById('infoViaje').textContent = ORIGEN + ' → ' + DESTINO;
-  document.getElementById('precioDisplay').textContent = formatReal(PRECIO);
+  document.getElementById('precioDisplay').textContent = formatMoneda(PRECIO);
 }
 
 function seatSVG(id, estado) {
@@ -217,7 +216,7 @@ function actualizarPanel() {
   var cant = ids.length;
   document.getElementById('selDisplay').textContent = cant > 0 ? ids.join(', ') : '—';
   document.getElementById('cntSelPanel').textContent = cant;
-  document.getElementById('totalDisplay').textContent = formatReal(cant * PRECIO);
+  document.getElementById('totalDisplay').textContent = formatMoneda(cant * PRECIO);
   document.getElementById('btnVer').disabled = cant === 0;
   document.getElementById('cntLibre').textContent = 26 - VENDIDOS.length - cant;
   document.getElementById('cntSel').textContent = cant;
@@ -230,7 +229,9 @@ function sel(id) {
   actualizarPanel();
 }
 
-function formatReal(val) { return 'R$ ' + val.toFixed(2).replace('.', ','); }
+function formatMoneda(val) {
+  return MONEDA + ' ' + val.toFixed(2).replace('.', ',');
+}
 
 function abrirModal() {
   var ids = Object.keys(seleccionados).sort();
@@ -238,8 +239,8 @@ function abrirModal() {
   document.getElementById('mViaje').textContent = ORIGEN + ' → ' + DESTINO;
   document.getElementById('mAsientos').textContent = ids.join(', ');
   document.getElementById('mCantidad').textContent = cant + (cant === 1 ? ' asiento' : ' asientos');
-  document.getElementById('mPrecio').textContent = formatReal(PRECIO);
-  document.getElementById('mTotal').textContent = formatReal(cant * PRECIO);
+  document.getElementById('mPrecio').textContent = formatMoneda(PRECIO);
+  document.getElementById('mTotal').textContent = formatMoneda(cant * PRECIO);
   document.getElementById('overlay').classList.add('active');
 }
 
@@ -248,8 +249,7 @@ function cerrarModal() {
 }
 
 // ============================================
-// CONFIRMAR — ENVÍA DATOS A MAKE VIA WEBHOOK
-// MAKE LOS RECIBE Y CREA LA FILA EN GLIDE
+// CONFIRMAR — ENVÍA A MAKE Y RECARGA
 // ============================================
 function confirmar() {
   var ids = Object.keys(seleccionados).sort();
@@ -266,18 +266,27 @@ function confirmar() {
     + '&total=' + total
     + '&viaje_id=' + encodeURIComponent(VIAJE_ID)
     + '&origen=' + encodeURIComponent(ORIGEN)
-    + '&destino=' + encodeURIComponent(DESTINO);
+    + '&destino=' + encodeURIComponent(DESTINO)
+    + '&moneda=' + encodeURIComponent(MONEDA);
 
-  fetch(url)
+  fetch(url, { mode: 'no-cors' })
     .then(function() {
       cerrarModal();
-      // Deselecciona todos los asientos confirmados
-      seleccionados = {};
-      render();
-      actualizarPanel();
-      showToast('✅ Reserva confirmada — ' + ids.join(', '), 'exito');
-      btn.disabled = false;
-      btn.textContent = 'Confirmar compra';
+      // Cuenta regresiva de 4 segundos y recarga
+      var segundos = 4;
+      var t = document.getElementById('toast');
+      t.className = 'toast exito show';
+      t.textContent = '✅ Reserva confirmada — actualizando en ' + segundos + 's';
+
+      var intervalo = setInterval(function() {
+        segundos--;
+        if (segundos > 0) {
+          t.textContent = '✅ Reserva confirmada — actualizando en ' + segundos + 's';
+        } else {
+          clearInterval(intervalo);
+          window.location.reload();
+        }
+      }, 1000);
     })
     .catch(function() {
       cerrarModal();
@@ -290,8 +299,7 @@ function confirmar() {
 function showToast(msg, tipo) {
   var t = document.getElementById('toast');
   t.textContent = msg;
-  t.className = 'toast ' + (tipo || 'exito');
-  t.classList.add('show');
+  t.className = 'toast ' + (tipo || 'exito') + ' show';
   setTimeout(function() { t.classList.remove('show'); }, 5000);
 }
 

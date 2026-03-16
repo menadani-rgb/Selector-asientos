@@ -31,6 +31,7 @@ body{font-family:Arial,sans-serif;background:#f0f0f0;padding:10px;}
 .btn-main{display:block;width:100%;padding:11px;border-radius:40px;border:none;background:#2E950F;color:white;font-size:14px;font-weight:bold;cursor:pointer;margin-top:10px;transition:opacity 0.15s;}
 .btn-main:hover{opacity:0.88;}
 .btn-main:disabled{background:#ddd;color:#aaa;cursor:not-allowed;}
+.btn-main.enviando{background:#888;cursor:not-allowed;}
 .overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,0.45);z-index:100;align-items:center;justify-content:center;}
 .overlay.active{display:flex;}
 .modal{background:#fff;border-radius:16px;padding:1.5rem;width:88%;max-width:320px;animation:popIn 0.2s ease;}
@@ -46,8 +47,11 @@ body{font-family:Arial,sans-serif;background:#f0f0f0;padding:10px;}
 .modal-btns{display:flex;gap:8px;margin-top:14px;}
 .btn-cancelar{flex:1;padding:9px;border-radius:40px;border:1.5px solid #ddd;background:transparent;color:#666;font-size:13px;cursor:pointer;}
 .btn-confirmar{flex:2;padding:9px;border-radius:40px;border:none;background:#2E950F;color:white;font-size:13px;font-weight:bold;cursor:pointer;}
-.toast{position:fixed;bottom:24px;left:50%;transform:translateX(-50%) translateY(60px);background:#2E950F;color:white;padding:10px 22px;border-radius:40px;font-size:13px;opacity:0;transition:all 0.3s;z-index:200;pointer-events:none;text-align:center;max-width:300px;}
+.btn-confirmar:disabled{background:#aaa;cursor:not-allowed;}
+.toast{position:fixed;bottom:24px;left:50%;transform:translateX(-50%) translateY(60px);color:white;padding:12px 24px;border-radius:40px;font-size:13px;opacity:0;transition:all 0.3s;z-index:200;pointer-events:none;text-align:center;max-width:320px;font-weight:bold;}
 .toast.show{opacity:1;transform:translateX(-50%) translateY(0);}
+.toast.exito{background:#2E950F;}
+.toast.error{background:#C72314;}
 </style>
 </head>
 <body>
@@ -105,7 +109,7 @@ body{font-family:Arial,sans-serif;background:#f0f0f0;padding:10px;}
     </div>
     <div class="modal-btns">
       <button class="btn-cancelar" onclick="cerrarModal()">Cancelar</button>
-      <button class="btn-confirmar" onclick="confirmar()">Guardar selección</button>
+      <button class="btn-confirmar" id="btnConfirmar" onclick="confirmar()">Confirmar compra</button>
     </div>
   </div>
 </div>
@@ -121,8 +125,10 @@ var ORIGEN = '';
 var DESTINO = '';
 
 // ============================================
-// LEE LOS PARÁMETROS QUE GLIDE PASA POR URL
+// URL DEL WEBHOOK DE MAKE
 // ============================================
+var WEBHOOK_URL = 'https://hook.us1.make.com/2tgnjr0cfzxppku2nr2e1fri7kqexs1j';
+
 function leerParams() {
   var params = new URLSearchParams(window.location.search);
   var vendidosStr = params.get('vendidos') || '';
@@ -242,48 +248,53 @@ function cerrarModal() {
 }
 
 // ============================================
-// ENVÍA LOS VALORES A GLIDE AL CONFIRMAR
-// Glide los captura y los guarda en las
-// columnas User Specific del viaje actual
+// CONFIRMAR — ENVÍA DATOS A MAKE VIA WEBHOOK
+// MAKE LOS RECIBE Y CREA LA FILA EN GLIDE
 // ============================================
 function confirmar() {
-  cerrarModal();
   var ids = Object.keys(seleccionados).sort();
   var cant = ids.length;
   var total = cant * PRECIO;
 
-  // Intento 1: postMessage estándar de Glide
-  window.parent.postMessage({
-    action: "set-values",
-    values: {
-      "US_Asientos": ids.join(','),
-      "US_Cantidad": cant,
-      "US_Total": total
-    }
-  }, "*");
+  var btn = document.getElementById('btnConfirmar');
+  btn.disabled = true;
+  btn.textContent = 'Enviando...';
 
-  // Intento 2: formato alternativo que algunas versiones de Glide escuchan
-  window.parent.postMessage({
-    type: "glide",
-    action: "set-column-values",
-    columnValues: {
-      "US_Asientos": ids.join(','),
-      "US_Cantidad": cant,
-      "US_Total": total
-    }
-  }, "*");
+  var url = WEBHOOK_URL
+    + '?asientos=' + encodeURIComponent(ids.join(','))
+    + '&cantidad=' + cant
+    + '&total=' + total
+    + '&viaje_id=' + encodeURIComponent(VIAJE_ID)
+    + '&origen=' + encodeURIComponent(ORIGEN)
+    + '&destino=' + encodeURIComponent(DESTINO);
 
-  showToast('Asientos ' + ids.join(', ') + ' listos. Tocá "Confirmar Reserva" abajo.');
+  fetch(url)
+    .then(function() {
+      cerrarModal();
+      // Deselecciona todos los asientos confirmados
+      seleccionados = {};
+      render();
+      actualizarPanel();
+      showToast('✅ Reserva confirmada — ' + ids.join(', '), 'exito');
+      btn.disabled = false;
+      btn.textContent = 'Confirmar compra';
+    })
+    .catch(function() {
+      cerrarModal();
+      showToast('❌ Error al confirmar. Intentá de nuevo.', 'error');
+      btn.disabled = false;
+      btn.textContent = 'Confirmar compra';
+    });
 }
 
-function showToast(msg) {
+function showToast(msg, tipo) {
   var t = document.getElementById('toast');
   t.textContent = msg;
+  t.className = 'toast ' + (tipo || 'exito');
   t.classList.add('show');
   setTimeout(function() { t.classList.remove('show'); }, 5000);
 }
 
-// Inicializar
 leerParams();
 render();
 actualizarPanel();

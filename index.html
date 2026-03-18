@@ -11,8 +11,9 @@ body{font-family:Arial,sans-serif;background:#f0f0f0;padding:10px;}
 .counter-pill{padding:4px 14px;border-radius:40px;font-size:12px;font-weight:bold;border:1.5px solid;}
 .pill-libre{border-color:#444;color:#444;background:#fff;}
 .pill-sel{border-color:#1a5a08;color:#1a5a08;background:#e6f5e0;}
+.pill-temp{border-color:#b35c00;color:#b35c00;background:#fff8e6;}
 .pill-vendido{border-color:#8a1509;color:#8a1509;background:#fde8e6;}
-.legend{display:flex;gap:14px;justify-content:center;flex-wrap:wrap;margin-bottom:12px;}
+.legend{display:flex;gap:10px;justify-content:center;flex-wrap:wrap;margin-bottom:12px;}
 .leg-item{display:flex;align-items:center;gap:5px;font-size:11px;color:#666;}
 .leg-dot{width:12px;height:12px;border-radius:3px;flex-shrink:0;}
 .piso{border:1px solid #ddd;border-radius:14px;padding:14px 8px 10px;margin-bottom:10px;background:#fff;}
@@ -51,7 +52,7 @@ body{font-family:Arial,sans-serif;background:#f0f0f0;padding:10px;}
 .toast.show{opacity:1;transform:translateX(-50%) translateY(0);}
 .toast.exito{background:#2E950F;}
 .toast.error{background:#C72314;}
-.countdown{display:inline-block;margin-left:6px;font-size:11px;opacity:0.8;}
+.toast.info{background:#b35c00;}
 </style>
 </head>
 <body>
@@ -60,11 +61,13 @@ body{font-family:Arial,sans-serif;background:#f0f0f0;padding:10px;}
   <div class="counter-bar">
     <div class="counter-pill pill-libre">Disponibles: <span id="cntLibre">0</span></div>
     <div class="counter-pill pill-sel">Seleccionados: <span id="cntSel">0</span></div>
+    <div class="counter-pill pill-temp">Reservados: <span id="cntTemp">0</span></div>
     <div class="counter-pill pill-vendido">Vendidos: <span id="cntVendido">0</span></div>
   </div>
   <div class="legend">
     <div class="leg-item"><div class="leg-dot" style="background:white;border:1.5px solid #222;"></div>Disponible</div>
     <div class="leg-item"><div class="leg-dot" style="background:#2E950F;border:1.5px solid #1a5a08;"></div>Seleccionado</div>
+    <div class="leg-item"><div class="leg-dot" style="background:#F5A623;border:1.5px solid #b35c00;"></div>Reservado</div>
     <div class="leg-item"><div class="leg-dot" style="background:#C72314;border:1.5px solid #8a1509;"></div>Vendido</div>
   </div>
 
@@ -119,23 +122,33 @@ body{font-family:Arial,sans-serif;background:#f0f0f0;padding:10px;}
 <script>
 var seleccionados = {};
 var VENDIDOS = [];
+var TEMP = [];
 var PRECIO = 85;
 var VIAJE_ID = '';
 var ORIGEN = '';
 var DESTINO = '';
 var MONEDA = 'Bs.';
+var USUARIO_ID = '';
 
-var WEBHOOK_URL = 'https://hook.us1.make.com/2tgnjr0cfzxppku2nr2e1fri7kqexs1j';
+var WEBHOOK_TEMP = 'https://hook.us1.make.com/evl1ddst5gd4i5u94qoy0jt43yrauvds';
+var WEBHOOK_CONFIRMAR = 'https://hook.us1.make.com/2tgnjr0cfzxppku2nr2e1fri7kqexs1j';
 
 function leerParams() {
   var params = new URLSearchParams(window.location.search);
+
   var vendidosStr = params.get('vendidos') || '';
   VENDIDOS = vendidosStr ? vendidosStr.split(',').map(function(s){ return s.trim(); }) : [];
+
+  var tempStr = params.get('temp') || '';
+  TEMP = tempStr ? tempStr.split(',').map(function(s){ return s.trim(); }) : [];
+
   PRECIO = parseFloat(params.get('precio')) || 85;
   VIAJE_ID = params.get('viaje') || '';
   ORIGEN = params.get('origen') || 'Origen';
   DESTINO = params.get('destino') || 'Destino';
   MONEDA = params.get('moneda') || 'Bs.';
+  USUARIO_ID = params.get('usuario_id') || 'anonimo';
+
   document.getElementById('infoViaje').textContent = ORIGEN + ' → ' + DESTINO;
   document.getElementById('precioDisplay').textContent = formatMoneda(PRECIO);
 }
@@ -147,6 +160,12 @@ function seatSVG(id, estado) {
     r2 = 'fill:#C72314;stroke:#8a1509;';
     rb = 'fill:#8a1509;stroke:#8a1509;';
     ru = 'fill:#8a1509;';
+    rt = 'fill:white;';
+  } else if (estado === 'temp') {
+    r1 = 'fill:#F5A623;stroke:#b35c00;';
+    r2 = 'fill:#F5A623;stroke:#b35c00;';
+    rb = 'fill:#b35c00;stroke:#b35c00;';
+    ru = 'fill:#b35c00;';
     rt = 'fill:white;';
   } else if (estado === 'seleccionado') {
     r1 = 'fill:#2E950F;stroke:#1a5a08;';
@@ -161,9 +180,10 @@ function seatSVG(id, estado) {
     ru = 'fill:#eee;';
     rt = 'fill:#333;';
   }
-  var cur = estado === 'vendido' ? 'cursor:not-allowed;' : 'cursor:pointer;';
-  var click = estado === 'vendido' ? '' : 'onclick="sel(\'' + id + '\')"';
-  var hover = estado === 'vendido' ? '' : 'onmouseover="this.style.transform=\'scale(1.1)\'" onmouseout="this.style.transform=\'scale(1)\'"';
+  var bloqueado = estado === 'vendido' || estado === 'temp';
+  var cur = bloqueado ? 'cursor:not-allowed;' : 'cursor:pointer;';
+  var click = bloqueado ? '' : 'onclick="sel(\'' + id + '\')"';
+  var hover = bloqueado ? '' : 'onmouseover="this.style.transform=\'scale(1.1)\'" onmouseout="this.style.transform=\'scale(1)\'"';
   return '<svg ' + click + ' ' + hover + ' viewBox="0 0 76 72" xmlns="http://www.w3.org/2000/svg" style="' + cur + 'width:64px;height:62px;overflow:visible;transition:transform 0.15s;display:block;">'
     + '<rect x="1" y="22" width="11" height="26" rx="5" style="' + r1 + '" stroke-width="1.8"/>'
     + '<rect x="64" y="22" width="11" height="26" rx="5" style="' + r1 + '" stroke-width="1.8"/>'
@@ -183,7 +203,11 @@ function renderPiso(containerId, filas) {
       if (id === '|') html += '<div style="width:18px;flex-shrink:0;"></div>';
       else if (id === '_') html += '<div style="width:64px;height:62px;visibility:hidden;display:block;"></div>';
       else {
-        var estado = VENDIDOS.indexOf(id) >= 0 ? 'vendido' : (seleccionados[id] ? 'seleccionado' : 'libre');
+        var estado;
+        if (VENDIDOS.indexOf(id) >= 0) estado = 'vendido';
+        else if (TEMP.indexOf(id) >= 0) estado = 'temp';
+        else if (seleccionados[id]) estado = 'seleccionado';
+        else estado = 'libre';
         html += seatSVG(id, estado);
       }
     });
@@ -218,8 +242,9 @@ function actualizarPanel() {
   document.getElementById('cntSelPanel').textContent = cant;
   document.getElementById('totalDisplay').textContent = formatMoneda(cant * PRECIO);
   document.getElementById('btnVer').disabled = cant === 0;
-  document.getElementById('cntLibre').textContent = 26 - VENDIDOS.length - cant;
+  document.getElementById('cntLibre').textContent = 26 - VENDIDOS.length - TEMP.length - cant;
   document.getElementById('cntSel').textContent = cant;
+  document.getElementById('cntTemp').textContent = TEMP.length;
   document.getElementById('cntVendido').textContent = VENDIDOS.length;
 }
 
@@ -242,6 +267,9 @@ function abrirModal() {
   document.getElementById('mPrecio').textContent = formatMoneda(PRECIO);
   document.getElementById('mTotal').textContent = formatMoneda(cant * PRECIO);
   document.getElementById('overlay').classList.add('active');
+
+  // Al abrir el modal enviamos la reserva temporal
+  enviarReservaTemp(ids);
 }
 
 function cerrarModal() {
@@ -249,7 +277,19 @@ function cerrarModal() {
 }
 
 // ============================================
-// CONFIRMAR — ENVÍA A MAKE Y RECARGA
+// RESERVA TEMPORAL — se dispara al abrir modal
+// ============================================
+function enviarReservaTemp(ids) {
+  var url = WEBHOOK_TEMP
+    + '?asientos=' + encodeURIComponent(ids.join('-'))
+    + '&viaje_id=' + encodeURIComponent(VIAJE_ID)
+    + '&usuario_id=' + encodeURIComponent(USUARIO_ID);
+
+  fetch(url, { mode: 'no-cors' }).catch(function(){});
+}
+
+// ============================================
+// CONFIRMAR DEFINITIVO — envía a Make y recarga
 // ============================================
 function confirmar() {
   var ids = Object.keys(seleccionados).sort();
@@ -260,24 +300,23 @@ function confirmar() {
   btn.disabled = true;
   btn.textContent = 'Enviando...';
 
-  var url = WEBHOOK_URL
-    + '?asientos=' + encodeURIComponent(ids.join(','))
+  var url = WEBHOOK_CONFIRMAR
+    + '?asientos=' + encodeURIComponent(ids.join('-'))
     + '&cantidad=' + cant
     + '&total=' + total
     + '&viaje_id=' + encodeURIComponent(VIAJE_ID)
     + '&origen=' + encodeURIComponent(ORIGEN)
     + '&destino=' + encodeURIComponent(DESTINO)
-    + '&moneda=' + encodeURIComponent(MONEDA);
+    + '&moneda=' + encodeURIComponent(MONEDA)
+    + '&usuario_id=' + encodeURIComponent(USUARIO_ID);
 
   fetch(url, { mode: 'no-cors' })
     .then(function() {
       cerrarModal();
-      // Cuenta regresiva de 4 segundos y recarga
-      var segundos = 4;
+      var segundos = 5;
       var t = document.getElementById('toast');
       t.className = 'toast exito show';
       t.textContent = '✅ Reserva confirmada — actualizando en ' + segundos + 's';
-
       var intervalo = setInterval(function() {
         segundos--;
         if (segundos > 0) {

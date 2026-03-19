@@ -130,25 +130,23 @@ var DESTINO = '';
 var MONEDA = 'Bs.';
 var USUARIO_ID = '';
 
-var WEBHOOK_TEMP = 'https://hook.us1.make.com/evl1ddst5gd4i5u94qoy0jt43yrauvds';
-var WEBHOOK_CONFIRMAR = 'https://hook.us1.make.com/2tgnjr0cfzxppku2nr2e1fri7kqexs1j';
+// ============================================
+// WEBHOOK CENTRAL — maneja temp y definitivo
+// ============================================
+var WEBHOOK = 'https://hook.us1.make.com/sf9osuarh19jrbt29x4t57cwshyxoady';
 
 function leerParams() {
   var params = new URLSearchParams(window.location.search);
-
   var vendidosStr = params.get('vendidos') || '';
   VENDIDOS = vendidosStr ? vendidosStr.split(',').map(function(s){ return s.trim(); }) : [];
-
   var tempStr = params.get('temp') || '';
   TEMP = tempStr ? tempStr.split(',').map(function(s){ return s.trim(); }) : [];
-
   PRECIO = parseFloat(params.get('precio')) || 85;
   VIAJE_ID = params.get('viaje') || '';
   ORIGEN = params.get('origen') || 'Origen';
   DESTINO = params.get('destino') || 'Destino';
   MONEDA = params.get('moneda') || 'Bs.';
   USUARIO_ID = params.get('usuario_id') || 'anonimo';
-
   document.getElementById('infoViaje').textContent = ORIGEN + ' → ' + DESTINO;
   document.getElementById('precioDisplay').textContent = formatMoneda(PRECIO);
 }
@@ -156,29 +154,17 @@ function leerParams() {
 function seatSVG(id, estado) {
   var r1, r2, rb, ru, rt;
   if (estado === 'vendido') {
-    r1 = 'fill:#C72314;stroke:#8a1509;';
-    r2 = 'fill:#C72314;stroke:#8a1509;';
-    rb = 'fill:#8a1509;stroke:#8a1509;';
-    ru = 'fill:#8a1509;';
-    rt = 'fill:white;';
+    r1='fill:#C72314;stroke:#8a1509;'; r2='fill:#C72314;stroke:#8a1509;';
+    rb='fill:#8a1509;stroke:#8a1509;'; ru='fill:#8a1509;'; rt='fill:white;';
   } else if (estado === 'temp') {
-    r1 = 'fill:#F5A623;stroke:#b35c00;';
-    r2 = 'fill:#F5A623;stroke:#b35c00;';
-    rb = 'fill:#b35c00;stroke:#b35c00;';
-    ru = 'fill:#b35c00;';
-    rt = 'fill:white;';
+    r1='fill:#F5A623;stroke:#b35c00;'; r2='fill:#F5A623;stroke:#b35c00;';
+    rb='fill:#b35c00;stroke:#b35c00;'; ru='fill:#b35c00;'; rt='fill:white;';
   } else if (estado === 'seleccionado') {
-    r1 = 'fill:#2E950F;stroke:#1a5a08;';
-    r2 = 'fill:#2E950F;stroke:#1a5a08;';
-    rb = 'fill:#1a5a08;stroke:#1a5a08;';
-    ru = 'fill:#1a5a08;';
-    rt = 'fill:white;';
+    r1='fill:#2E950F;stroke:#1a5a08;'; r2='fill:#2E950F;stroke:#1a5a08;';
+    rb='fill:#1a5a08;stroke:#1a5a08;'; ru='fill:#1a5a08;'; rt='fill:white;';
   } else {
-    r1 = 'fill:white;stroke:#222;';
-    r2 = 'fill:white;stroke:#222;';
-    rb = 'fill:#eee;stroke:#222;';
-    ru = 'fill:#eee;';
-    rt = 'fill:#333;';
+    r1='fill:white;stroke:#222;'; r2='fill:white;stroke:#222;';
+    rb='fill:#eee;stroke:#222;'; ru='fill:#eee;'; rt='fill:#333;';
   }
   var bloqueado = estado === 'vendido' || estado === 'temp';
   var cur = bloqueado ? 'cursor:not-allowed;' : 'cursor:pointer;';
@@ -198,7 +184,7 @@ function renderPiso(containerId, filas) {
   var html = '';
   filas.forEach(function(fila, i) {
     html += '<div style="display:flex;gap:5px;justify-content:center;margin-bottom:7px;align-items:center;">';
-    html += '<span style="font-size:10px;color:#ccc;width:14px;text-align:right;flex-shrink:0;">' + (i + 1) + '</span>';
+    html += '<span style="font-size:10px;color:#ccc;width:14px;text-align:right;flex-shrink:0;">' + (i+1) + '</span>';
     fila.forEach(function(id) {
       if (id === '|') html += '<div style="width:18px;flex-shrink:0;"></div>';
       else if (id === '_') html += '<div style="width:64px;height:62px;visibility:hidden;display:block;"></div>';
@@ -217,18 +203,11 @@ function renderPiso(containerId, filas) {
 }
 
 var filasSuperiores = [
-  ['01','02','|','03'],
-  ['04','05','|','06'],
-  ['07','08','|','09'],
-  ['10','11','|','12'],
-  ['13','14','|','15'],
-  ['16','17','|','18'],
+  ['01','02','|','03'],['04','05','|','06'],['07','08','|','09'],
+  ['10','11','|','12'],['13','14','|','15'],['16','17','|','18'],
   ['19','20','|','_']
 ];
-var filasInferiores = [
-  ['21','22','|','23'],
-  ['24','25','|','26']
-];
+var filasInferiores = [['21','22','|','23'],['24','25','|','26']];
 
 function render() {
   renderPiso('piso-sup', filasSuperiores);
@@ -254,8 +233,20 @@ function sel(id) {
   actualizarPanel();
 }
 
-function formatMoneda(val) {
-  return MONEDA + ' ' + val.toFixed(2).replace('.', ',');
+function formatMoneda(val) { return MONEDA + ' ' + val.toFixed(2).replace('.', ','); }
+
+function enviarWebhook(tipo, ids, cant, total) {
+  var url = WEBHOOK
+    + '?tipo=' + tipo
+    + '&asientos=' + encodeURIComponent(ids.join('-'))
+    + '&viaje_id=' + encodeURIComponent(VIAJE_ID)
+    + '&usuario_id=' + encodeURIComponent(USUARIO_ID)
+    + '&cantidad=' + cant
+    + '&total=' + total
+    + '&origen=' + encodeURIComponent(ORIGEN)
+    + '&destino=' + encodeURIComponent(DESTINO)
+    + '&moneda=' + encodeURIComponent(MONEDA);
+  fetch(url, { mode: 'no-cors' }).catch(function(){});
 }
 
 function abrirModal() {
@@ -267,72 +258,37 @@ function abrirModal() {
   document.getElementById('mPrecio').textContent = formatMoneda(PRECIO);
   document.getElementById('mTotal').textContent = formatMoneda(cant * PRECIO);
   document.getElementById('overlay').classList.add('active');
-
-  // Al abrir el modal enviamos la reserva temporal
-  enviarReservaTemp(ids);
+  // Dispara reserva temporal al abrir el modal
+  enviarWebhook('temp', ids, cant, cant * PRECIO);
 }
 
 function cerrarModal() {
   document.getElementById('overlay').classList.remove('active');
 }
 
-// ============================================
-// RESERVA TEMPORAL — se dispara al abrir modal
-// ============================================
-function enviarReservaTemp(ids) {
-  var url = WEBHOOK_TEMP
-    + '?asientos=' + encodeURIComponent(ids.join('-'))
-    + '&viaje_id=' + encodeURIComponent(VIAJE_ID)
-    + '&usuario_id=' + encodeURIComponent(USUARIO_ID);
-
-  fetch(url, { mode: 'no-cors' }).catch(function(){});
-}
-
-// ============================================
-// CONFIRMAR DEFINITIVO — envía a Make y recarga
-// ============================================
 function confirmar() {
   var ids = Object.keys(seleccionados).sort();
   var cant = ids.length;
   var total = cant * PRECIO;
-
   var btn = document.getElementById('btnConfirmar');
   btn.disabled = true;
   btn.textContent = 'Enviando...';
-
-  var url = WEBHOOK_CONFIRMAR
-    + '?asientos=' + encodeURIComponent(ids.join('-'))
-    + '&cantidad=' + cant
-    + '&total=' + total
-    + '&viaje_id=' + encodeURIComponent(VIAJE_ID)
-    + '&origen=' + encodeURIComponent(ORIGEN)
-    + '&destino=' + encodeURIComponent(DESTINO)
-    + '&moneda=' + encodeURIComponent(MONEDA)
-    + '&usuario_id=' + encodeURIComponent(USUARIO_ID);
-
-  fetch(url, { mode: 'no-cors' })
-    .then(function() {
-      cerrarModal();
-      var segundos = 5;
-      var t = document.getElementById('toast');
-      t.className = 'toast exito show';
+  // Dispara reserva definitiva
+  enviarWebhook('definitivo', ids, cant, total);
+  cerrarModal();
+  var segundos = 5;
+  var t = document.getElementById('toast');
+  t.className = 'toast exito show';
+  t.textContent = '✅ Reserva confirmada — actualizando en ' + segundos + 's';
+  var intervalo = setInterval(function() {
+    segundos--;
+    if (segundos > 0) {
       t.textContent = '✅ Reserva confirmada — actualizando en ' + segundos + 's';
-      var intervalo = setInterval(function() {
-        segundos--;
-        if (segundos > 0) {
-          t.textContent = '✅ Reserva confirmada — actualizando en ' + segundos + 's';
-        } else {
-          clearInterval(intervalo);
-          window.location.reload();
-        }
-      }, 1000);
-    })
-    .catch(function() {
-      cerrarModal();
-      showToast('❌ Error al confirmar. Intentá de nuevo.', 'error');
-      btn.disabled = false;
-      btn.textContent = 'Confirmar compra';
-    });
+    } else {
+      clearInterval(intervalo);
+      window.location.reload();
+    }
+  }, 1000);
 }
 
 function showToast(msg, tipo) {
